@@ -920,6 +920,22 @@ function renderTicket(r) {
   });
 })();
 
+/* ===== アクセス記録（ページを開くたびに記録） ===== */
+(function logAccess() {
+  try {
+    var data = {
+      rowType:    'access',
+      ts:         new Date().toISOString(),
+      deviceType: getDeviceType(),
+      deviceId:   getDeviceId(),
+    };
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', GAS_URL, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain');
+    xhr.send(JSON.stringify(data));
+  } catch(e) { /* 失敗してもページ表示には影響させない */ }
+})();
+
 /* ===== 初期化 ===== */
 renderCompanions();
 </script>
