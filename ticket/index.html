@@ -580,10 +580,22 @@ function showPage(name) {
 }
 
 /* ===== 目的ラジオ切替 ===== */
-document.getElementById('purposePerformer').addEventListener('change', onPurposeChange);
-document.getElementById('purposeTrial').addEventListener('change', onPurposeChange);
+/* iOS Safariではchangeが発火しないことがあるため、ラベルのclickでも切替 */
+['purposePerformer', 'purposeTrial'].forEach(function(id) {
+  var radio = document.getElementById(id);
+  radio.addEventListener('change', onPurposeChange);
+  /* ラベルのクリックでも確実に反映 */
+  var label = document.querySelector('label[for="' + id + '"]');
+  if (label) {
+    label.addEventListener('click', function() {
+      radio.checked = true;
+      onPurposeChange();
+    });
+  }
+});
 function onPurposeChange() {
-  var val = document.querySelector('input[name="purpose"]:checked').value;
+  var checked = document.querySelector('input[name="purpose"]:checked');
+  var val = checked ? checked.value : '';
   document.getElementById('detailPerformer').classList.toggle('hidden', val !== 'performer');
   document.getElementById('detailTrial').classList.toggle('hidden', val !== 'trial');
 }
