@@ -744,27 +744,34 @@ function sendRow(data) {
 }
 
 function sendToSheet(record, callback) {
-  /* 代表者行を送信 */
+  /* 代表者行を先に送信 */
   sendRow(Object.assign({}, record, { rowType: 'rep' }));
 
-  /* お連れ様行を送信 */
-  record.companions.forEach(function(comp, i) {
-    sendRow({
-      no:             record.no,
-      ts:             record.ts,
-      repName:        record.repName,
-      repAge:         record.repAge,
-      purpose:        record.purpose,
-      performerName:  record.performerName,
-      contact:        record.contact,
-      trialMailOptIn: record.trialMailOptIn,
-      companions:     [],
-      companionName:  comp.name,
-      companionAge:   comp.ageGroup,
-      companionIndex: i + 1,
-      rowType:        'companion',
-    });
-  });
+  /* お連れ様行は500ms遅らせて送信（代表者行の先着を確保） */
+  if (record.companions.length > 0) {
+    setTimeout(function() {
+      record.companions.forEach(function(comp, i) {
+        /* 1人ずつ200msずつずらして送信 */
+        setTimeout(function() {
+          sendRow({
+            no:             record.no,
+            ts:             record.ts,
+            repName:        record.repName,
+            repAge:         record.repAge,
+            purpose:        record.purpose,
+            performerName:  record.performerName,
+            contact:        record.contact,
+            trialMailOptIn: record.trialMailOptIn,
+            companions:     [],
+            companionName:  comp.name,
+            companionAge:   comp.ageGroup,
+            companionIndex: i + 1,
+            rowType:        'companion',
+          });
+        }, i * 200);
+      });
+    }, 500);
+  }
 
   callback(record);
 }
