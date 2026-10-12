@@ -10,8 +10,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root {
       --pink:       #e8a0b4;
@@ -452,7 +450,7 @@
     <div class="ticket-success-msg">
       <div class="ticket-success-icon">🎉</div>
       <div class="ticket-success-title">お申込みが完了しました！</div>
-      <div class="ticket-success-sub">下記のチケットをスクリーンショットまたはPDF保存し、受付でご提示ください</div>
+      <div class="ticket-success-sub">下記のチケットをスクリーンショットして保存し、受付でご提示ください</div>
     </div>
 
     <div class="ticket-wrapper">
@@ -502,18 +500,17 @@
       </div>
     </div>
 
-    <div class="ticket-actions">
-      <button type="button" class="btn-action btn-action-pdf"  id="btnPdf">📄 PDFで保存</button>
+    <div style="background:var(--gold-light);border:1px solid var(--gold);border-radius:var(--radius-md);padding:16px 18px;margin-bottom:24px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">📸</div>
+      <div style="font-size:15px;font-weight:700;color:#7a5a10;line-height:1.6;">
+        この画面をスクリーンショットして保存し、<br>当日受付でご提示ください
+      </div>
     </div>
   </div>
 
 </main>
 
 <div class="toast-container" id="toastContainer"></div>
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
-  <div class="loading-text">PDF生成中...</div>
-</div>
 
 <script>
 'use strict';
@@ -842,32 +839,6 @@ function renderTicket(r) {
   document.getElementById('tkIssued').textContent  = '発行：' + fmtDt(new Date(r.ts));
   document.getElementById('tkTotal').textContent   = (1 + r.companions.length) + '名';
 }
-
-/* ===== PDF保存 ===== */
-document.getElementById('btnPdf').addEventListener('click', function() {
-  /* CDNライブラリが未ロードの場合はフォールバック */
-  if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
-    toast('PDF機能を利用するにはオンライン環境が必要です', 'error');
-    return;
-  }
-  var overlay = document.getElementById('loadingOverlay');
-  overlay.classList.add('show');
-  var el = document.getElementById('ticketEl');
-  html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#ffffff', logging: false })
-    .then(function(canvas) {
-      var imgData = canvas.toDataURL('image/png');
-      var jsPDF = window.jspdf.jsPDF;
-      var iw = canvas.width, ih = canvas.height;
-      var pw = 190, ph = pw * (ih / iw);
-      var pdf = new jsPDF({ orientation: ph > pw ? 'portrait' : 'landscape', unit: 'mm', format: [pw+20, ph+20] });
-      pdf.addImage(imgData, 'PNG', 10, 10, pw, ph);
-      pdf.save('ballet_ticket_' + Date.now() + '.pdf');
-      /* ダウンロード確認はできないためスクリーンショットも案内 */
-      toast('ダウンロードフォルダをご確認ください。保存できない場合はスクリーンショットをお使いください。', 'info');
-    })
-    .catch(function(e) { console.error(e); toast('PDF生成に失敗しました。スクリーンショットで保存してください。', 'error'); })
-    .finally(function() { overlay.classList.remove('show'); });
-});
 
 /* ===== お連れ様追加ボタン ===== */
 (function() {
