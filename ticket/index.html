@@ -855,9 +855,10 @@ document.getElementById('btnPdf').addEventListener('click', function() {
       var pdf = new jsPDF({ orientation: ph > pw ? 'portrait' : 'landscape', unit: 'mm', format: [pw+20, ph+20] });
       pdf.addImage(imgData, 'PNG', 10, 10, pw, ph);
       pdf.save('ballet_ticket_' + Date.now() + '.pdf');
-      toast('PDFを保存しました 📄', 'success');
+      /* ダウンロード確認はできないためスクリーンショットも案内 */
+      toast('ダウンロードフォルダをご確認ください。保存できない場合はスクリーンショットをお使いください。', 'info');
     })
-    .catch(function(e) { console.error(e); toast('PDF生成に失敗しました', 'error'); })
+    .catch(function(e) { console.error(e); toast('PDF生成に失敗しました。スクリーンショットで保存してください。', 'error'); })
     .finally(function() { overlay.classList.remove('show'); });
 });
 
