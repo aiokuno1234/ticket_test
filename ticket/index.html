@@ -678,7 +678,7 @@ function validate() {
 /* ===== Google Sheets 送信 ===== */
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILqQifQpLvTSJCNVdoxvyTV8qlWOr6lojwCXsb8dYhaaozw/exec';
 
-/* iframeフォーム送信（返り値不要な行用） */
+/* iframeフォーム送信（fire-and-forget） */
 function sendRow(data) {
   var iframeName = 'gas_row_' + Date.now() + '_' + Math.random();
   var fi = document.createElement('iframe');
@@ -703,46 +703,38 @@ function sendRow(data) {
   }, 5000);
 }
 
-/* 代表者行はfetchで送信してNo.を受け取る */
 function sendToSheet(record, callback) {
-  var params = new URLSearchParams();
-  params.append('payload', JSON.stringify(Object.assign({}, record, { rowType: 'rep' })));
+  /* GETでNo.（現在の行数）を取得してから送信 */
+  fetch(GAS_URL + '?action=getNo')
+    .then(function(res) { return res.json(); })
+    .then(function(json) {
+      record.no = json.no || 0;
+    })
+    .catch(function() { record.no = 0; })
+    .finally(function() {
+      /* 代表者行を送信 */
+      sendRow(Object.assign({}, record, { rowType: 'rep' }));
 
-  fetch(GAS_URL, {
-    method: 'POST',
-    body: params,
-  })
-  .then(function(res) { return res.text(); })
-  .then(function(txt) {
-    try {
-      var res = JSON.parse(txt);
-      if (res && res.no) record.no = res.no;
-    } catch(e) {}
-
-    /* No.確定後にお連れ様行を送信 */
-    record.companions.forEach(function(name, i) {
-      sendRow({
-        no:             record.no,
-        ts:             record.ts,
-        repName:        record.repName,
-        repAge:         record.repAge,
-        purpose:        record.purpose,
-        performerName:  record.performerName,
-        contact:        record.contact,
-        trialMailOptIn: record.trialMailOptIn,
-        companions:     [],
-        companionName:  name,
-        companionIndex: i + 1,
-        rowType:        'companion',
+      /* お連れ様行を送信 */
+      record.companions.forEach(function(name, i) {
+        sendRow({
+          no:             record.no,
+          ts:             record.ts,
+          repName:        record.repName,
+          repAge:         record.repAge,
+          purpose:        record.purpose,
+          performerName:  record.performerName,
+          contact:        record.contact,
+          trialMailOptIn: record.trialMailOptIn,
+          companions:     [],
+          companionName:  name,
+          companionIndex: i + 1,
+          rowType:        'companion',
+        });
       });
-    });
 
-    callback(record);
-  })
-  .catch(function(err) {
-    console.warn('送信エラー:', err);
-    callback(record); /* エラーでもチケット表示は続行 */
-  });
+      callback(record);
+    });
 }
 
 /* ===== フォーム送信 ===== */
