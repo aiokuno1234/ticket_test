@@ -714,59 +714,38 @@ function validate() {
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILqQifQpLvTSJCNVdoxvyTV8qlWOr6lojwCXsb8dYhaaozw/exec';
 
 /* iframeフォーム送信（fire-and-forget） */
-function sendRow(data) {
-  /* XHR + no-cors + text/plain でGASに送信（最も安定） */
-  try {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', GAS_URL, true);
-    xhr.setRequestHeader('Content-Type', 'text/plain');
-    xhr.send(JSON.stringify(data));
-  } catch(err) {
-    /* XHR失敗時はiframeフォーム送信にフォールバック */
-    var iframeName = 'gas_row_' + Date.now() + '_' + Math.random();
-    var fi = document.createElement('iframe');
-    fi.name = iframeName;
-    fi.style.display = 'none';
-    document.body.appendChild(fi);
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = GAS_URL;
-    form.target = iframeName;
-    form.style.display = 'none';
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'payload';
-    input.value = JSON.stringify(data);
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(function() {
-      if (form.parentNode) form.parentNode.removeChild(form);
-      if (fi.parentNode)   fi.parentNode.removeChild(fi);
-    }, 5000);
-  }
-}
-
 function sendToSheet(record, callback) {
   /* オフライン確認 */
   if (!navigator.onLine) {
-    callback(null); /* nullでオフラインエラーを通知 */
+    callback(null);
     return;
   }
 
-  /* GASにPINGを送って実際の疎通を確認してから送信 */
+  /* 全データを1リクエストで送信し、GASの応答（成功）を待ってからチケット表示 */
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', GAS_URL + '?ping=1', true);
-  xhr.timeout = 8000; /* 8秒でタイムアウト */
+  xhr.open('POST', GAS_URL, true);
+  xhr.setRequestHeader('Content-Type', 'text/plain');
+  xhr.timeout = 15000; /* 15秒でタイムアウト */
+
   xhr.onload = function() {
-    /* 疎通OK → データ送信 */
-    sendRow(Object.assign({}, record, { rowType: 'all' }));
-    callback(record);
+    /* GASからの応答を確認 */
+    try {
+      var res = JSON.parse(xhr.responseText);
+      if (res && res.result === 'ok') {
+        callback(record); /* 保存成功を確認してからチケット表示 */
+      } else {
+        callback(null);   /* GAS側でエラー */
+      }
+    } catch(e) {
+      /* 応答が壊れている場合も失敗扱い */
+      callback(null);
+    }
   };
   xhr.onerror = xhr.ontimeout = function() {
-    callback(null); /* 疎通失敗 */
+    callback(null);
   };
-  xhr.send();
+
+  xhr.send(JSON.stringify(Object.assign({}, record, { rowType: 'all' })));
 }
 
 /* ===== フォーム送信 ===== */
