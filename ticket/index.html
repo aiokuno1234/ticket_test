@@ -846,9 +846,9 @@ document.getElementById('btnPdf').addEventListener('click', function() {
       var pw = 190, ph = pw * (ih / iw);
       var pdf = new jsPDF({ orientation: ph > pw ? 'portrait' : 'landscape', unit: 'mm', format: [pw+20, ph+20] });
       pdf.addImage(imgData, 'PNG', 10, 10, pw, ph);
-      /* 新しいタブでPDFを表示（保存はユーザー任意） */
+      /* iOS Safariのポップアップブロック回避：同じタブでPDFを開く */
       var blobUrl = pdf.output('bloburl');
-      window.open(blobUrl, '_blank');
+      window.location.href = blobUrl;
     })
     .catch(function(e) { console.error(e); toast('PDF生成に失敗しました。スクリーンショットをご利用ください。', 'error'); })
     .finally(function() { overlay.classList.remove('show'); });
