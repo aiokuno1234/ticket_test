@@ -502,11 +502,6 @@
 <script>
 'use strict';
 
-/* ===== データ管理 ===== */
-const STORAGE_KEY = 'ai_ballet_tickets_v1';
-function loadData() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } }
-function saveData(a) { localStorage.setItem(STORAGE_KEY, JSON.stringify(a)); }
-
 /* ===== ユーティリティ ===== */
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -683,90 +678,109 @@ function validate() {
 /* ===== Google Sheets 送信 ===== */
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILqQifQpLvTSJCNVdoxvyTV8qlWOr6lojwCXsb8dYhaaozw/exec';
 
-function sendToSheet(record) {
-  /* お連れ様0名の場合は代表者1行、1名以上は代表者行＋お連れ様1人1行で送信 */
-  var rows = [];
+function sendToSheet(record, callback) {
+  /* GASにPOSTしてNo.を返してもらう（代表者行のみ返り値を待つ） */
+  var iframe = document.createElement('iframe');
+  iframe.name = 'gas_rep_' + Date.now();
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
 
-  /* 代表者行 */
-  rows.push(Object.assign({}, record, { rowType: 'rep' }));
-
-  /* お連れ様行（1人1行） */
-  record.companions.forEach(function(name, i) {
-    rows.push({
-      no:            record.no,
-      ts:            record.ts,
-      repName:       record.repName,
-      repAge:        record.repAge,
-      purpose:       record.purpose,
-      performerName: record.performerName,
-      contact:       record.contact,
-      trialMailOptIn: record.trialMailOptIn,
-      companions:    [],
-      companionName: name,        /* お連れ様の名前 */
-      companionIndex: i + 1,      /* 何人目か */
-      rowType:       'companion',
-    });
-  });
-
-  rows.forEach(function(row) {
+  /* iframeのonloadでGASの返り値（No.）を受け取る */
+  iframe.addEventListener('load', function() {
     try {
-      var iframe = document.createElement('iframe');
-      iframe.name = 'gas_target_' + Date.now() + '_' + Math.random();
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
+      var txt = iframe.contentDocument
+                  ? iframe.contentDocument.body.innerText
+                  : iframe.contentWindow.document.body.innerText;
+      var res = JSON.parse(txt);
+      if (res && res.no) {
+        record.no = res.no; /* GASから採番されたNo.をセット */
+      }
+    } catch(e) { /* 取得できなくても続行 */ }
 
-      var form = document.createElement('form');
-      form.method = 'POST';
-      form.action = GAS_URL;
-      form.target = iframe.name;
-      form.style.display = 'none';
+    /* お連れ様行を追加送信（No.確定後） */
+    record.companions.forEach(function(name, i) {
+      sendRow({
+        no:             record.no,
+        ts:             record.ts,
+        repName:        record.repName,
+        repAge:         record.repAge,
+        purpose:        record.purpose,
+        performerName:  record.performerName,
+        contact:        record.contact,
+        trialMailOptIn: record.trialMailOptIn,
+        companions:     [],
+        companionName:  name,
+        companionIndex: i + 1,
+        rowType:        'companion',
+      });
+    });
 
-      var input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'payload';
-      input.value = JSON.stringify(row);
-      form.appendChild(input);
+    callback(record); /* チケット表示へ */
 
-      document.body.appendChild(form);
-      form.submit();
-
-      setTimeout(function() {
-        if (form.parentNode)   form.parentNode.removeChild(form);
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      }, 5000);
-    } catch(err) {
-      console.warn('Google Sheets送信エラー:', err);
-    }
+    setTimeout(function() {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }, 5000);
   });
+
+  sendRow(Object.assign({}, record, { rowType: 'rep' }), iframe.name);
+}
+
+function sendRow(data, targetName) {
+  /* iframeへのform送信 */
+  var iframeName = targetName || ('gas_row_' + Date.now() + '_' + Math.random());
+  if (!targetName) {
+    var fi = document.createElement('iframe');
+    fi.name = iframeName;
+    fi.style.display = 'none';
+    document.body.appendChild(fi);
+    setTimeout(function() { if (fi.parentNode) fi.parentNode.removeChild(fi); }, 5000);
+  }
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = GAS_URL;
+  form.target = iframeName;
+  form.style.display = 'none';
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'payload';
+  input.value = JSON.stringify(data);
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(function() { if (form.parentNode) form.parentNode.removeChild(form); }, 5000);
 }
 
 /* ===== フォーム送信 ===== */
 document.getElementById('btnSubmit').addEventListener('click', function() {
   if (!validate()) { toast('入力内容をご確認ください', 'error'); return; }
 
-  var data = loadData();
-  var now  = new Date();
+  /* 送信中はボタンを無効化 */
+  var submitBtn = document.getElementById('btnSubmit');
+  submitBtn.disabled = true;
+  submitBtn.textContent = '送信中...';
+
+  var now     = new Date();
   var purpose = document.querySelector('input[name="purpose"]:checked').value;
-  var record = {
-    no:            data.length + 1,
-    ts:            now.toISOString(),
-    repName:       document.getElementById('repName').value.trim(),
-    repAge:        parseInt(toHalfNum(document.getElementById('repAge').value), 10),
-    purpose:       purpose,
-    performerName: purpose === 'performer' ? document.getElementById('performerName').value.trim() : '',
-    contact:       purpose === 'trial'     ? document.getElementById('contact').value.trim()       : '',
-    companions:    companions.filter(function(c){ return c.name.trim() !== ''; }).map(function(c){ return c.name.trim(); }),
+  var record  = {
+    no:             0, /* GASから採番 */
+    ts:             now.toISOString(),
+    repName:        document.getElementById('repName').value.trim(),
+    repAge:         parseInt(toHalfNum(document.getElementById('repAge').value), 10),
+    purpose:        purpose,
+    performerName:  purpose === 'performer' ? document.getElementById('performerName').value.trim() : '',
+    contact:        purpose === 'trial'     ? document.getElementById('contact').value.trim()       : '',
+    companions:     companions.filter(function(c){ return c.name.trim() !== ''; }).map(function(c){ return c.name.trim(); }),
     trialMailOptIn: document.getElementById('trialMailOptIn').checked,
   };
-  data.push(record);
-  saveData(data);
 
-  /* Google Sheetsに非同期で送信（失敗してもチケット表示は続行） */
-  sendToSheet(record);
-
-  renderTicket(record);
-  showPage('ticket');
-  toast('🎉 申込が完了しました！', 'success');
+  /* GASに送信し、No.が返ってきたらチケット表示 */
+  sendToSheet(record, function(filledRecord) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>🎟</span>チケットを発行する';
+    renderTicket(filledRecord);
+    showPage('ticket');
+    toast('🎉 申込が完了しました！', 'success');
+  });
 });
 
 /* ===== チケット描画 ===== */
