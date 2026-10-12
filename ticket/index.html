@@ -490,6 +490,10 @@
               <div class="ticket-no"   id="tkNumber">No.000001</div>
               <div class="ticket-date" id="tkIssued">発行：—</div>
             </div>
+            <div style="text-align:center;">
+              <div style="font-size:11px;color:var(--text-muted);letter-spacing:0.08em;">合計人数</div>
+              <div style="font-size:22px;font-weight:700;color:var(--navy);" id="tkTotal">—</div>
+            </div>
             <div class="ticket-icon">🎟</div>
           </div>
         </div>
@@ -834,6 +838,7 @@ function renderTicket(r) {
   }
   document.getElementById('tkNumber').textContent = 'No.' + String(r.no).padStart(6,'0');
   document.getElementById('tkIssued').textContent  = '発行：' + fmtDt(new Date(r.ts));
+  document.getElementById('tkTotal').textContent   = (1 + r.companions.length) + '名';
 }
 
 /* ===== PDF保存 ===== */
