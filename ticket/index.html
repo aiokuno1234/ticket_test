@@ -89,6 +89,15 @@
       filter: invert(1);
     }
     .event-card > *, .ticket-top > * { position: relative; z-index: 1; }
+    /* タイトル横に並べるシルエット */
+    .silhouette-inline {
+      width: 72px;
+      height: auto;
+      flex-shrink: 0;
+      opacity: 0.4;
+      mix-blend-mode: screen;
+      filter: invert(1);
+    }
     .event-badge {
       display: inline-block;
       background: var(--gold);
@@ -360,9 +369,11 @@
   <div id="page-form" class="page active">
 
     <div class="event-card">
-      <img src="rogo.png" alt="" class="silhouette" style="width:80px;top:12px;right:8px;">
       <div class="event-badge">入場無料</div>
-      <div class="event-name">アイバレエスタジオ<br>第2回発表会</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div class="event-name" style="margin-bottom:0;">アイバレエスタジオ<br>第2回発表会</div>
+        <img src="rogo.png" alt="" class="silhouette-inline">
+      </div>
       <div class="event-programs">
         <span class="program-tag">🩰 バレエコンサート</span>
         <span class="program-tag">🧚 ピーター・パン</span>
