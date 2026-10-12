@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1a2a4a">
   <title>アイバレエスタジオ 第2回発表会 — チケット申込</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -600,9 +600,19 @@ function renderCompanions() {
       btn.className = 'btn-remove-companion';
       btn.textContent = '✕';
       btn.dataset.cid = c.id;
-      btn.addEventListener('click', function() {
-        removeCompanionById(Number(this.dataset.cid));
-      });
+      /* touchstart + click 両対応 */
+      (function(b) {
+        var touched = false;
+        b.addEventListener('touchstart', function(e) {
+          e.preventDefault();
+          touched = true;
+          removeCompanionById(Number(b.dataset.cid));
+        }, { passive: false });
+        b.addEventListener('click', function() {
+          if (touched) { touched = false; return; }
+          removeCompanionById(Number(b.dataset.cid));
+        });
+      })(btn);
 
       row.appendChild(lbl);
       row.appendChild(inp);
@@ -627,14 +637,24 @@ function setErr(id, show) {
   var el = document.getElementById(id);
   if (el) el.classList.toggle('show', !!show);
 }
+
+/* 全角数字→半角に正規化 */
+function toHalfNum(str) {
+  return String(str).replace(/[０-９]/g, function(c) {
+    return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+  }).trim();
+}
+
 function validate() {
   var ok = true;
   var name = document.getElementById('repName').value.trim();
   setErr('errRepName', !name);
   if (!name) ok = false;
 
-  var age = document.getElementById('repAge').value.trim();
-  var ageOk = age !== '' && !isNaN(Number(age)) && Number(age) >= 0;
+  /* 全角数字対応 */
+  var ageRaw = toHalfNum(document.getElementById('repAge').value);
+  var ageNum = parseInt(ageRaw, 10);
+  var ageOk = ageRaw !== '' && !isNaN(ageNum) && ageNum >= 0 && ageNum <= 120;
   setErr('errRepAge', !ageOk);
   if (!ageOk) ok = false;
 
@@ -654,6 +674,21 @@ function validate() {
   return ok;
 }
 
+/* ===== Google Sheets 送信 ===== */
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILqQifQpLvTSJCNVdoxvyTV8qlWOr6lojwCXsb8dYhaaozw/exec';
+
+function sendToSheet(record) {
+  fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'no-cors', /* GASはCORSヘッダーを返せないためno-corsで送信 */
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record)
+  }).catch(function(err) {
+    /* 送信失敗してもチケット表示は妨げない（localStorageには保存済み） */
+    console.warn('Google Sheets送信エラー:', err);
+  });
+}
+
 /* ===== フォーム送信 ===== */
 document.getElementById('btnSubmit').addEventListener('click', function() {
   if (!validate()) { toast('入力内容をご確認ください', 'error'); return; }
@@ -665,7 +700,7 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
     no:            data.length + 1,
     ts:            now.toISOString(),
     repName:       document.getElementById('repName').value.trim(),
-    repAge:        parseInt(document.getElementById('repAge').value, 10),
+    repAge:        parseInt(toHalfNum(document.getElementById('repAge').value), 10),
     purpose:       purpose,
     performerName: purpose === 'performer' ? document.getElementById('performerName').value.trim() : '',
     contact:       purpose === 'trial'     ? document.getElementById('contact').value.trim()       : '',
@@ -673,6 +708,9 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
   };
   data.push(record);
   saveData(data);
+
+  /* Google Sheetsに非同期で送信（失敗してもチケット表示は続行） */
+  sendToSheet(record);
 
   renderTicket(record);
   showPage('ticket');
@@ -707,6 +745,11 @@ function renderTicket(r) {
 
 /* ===== PDF保存 ===== */
 document.getElementById('btnPdf').addEventListener('click', function() {
+  /* CDNライブラリが未ロードの場合はフォールバック */
+  if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+    toast('PDF機能を利用するにはオンライン環境が必要です', 'error');
+    return;
+  }
   var overlay = document.getElementById('loadingOverlay');
   overlay.classList.add('show');
   var el = document.getElementById('ticketEl');
@@ -742,7 +785,20 @@ document.getElementById('btnBack').addEventListener('click', function() {
 });
 
 /* ===== お連れ様追加ボタン ===== */
-document.getElementById('btnAddCompanion').addEventListener('click', addCompanion);
+(function() {
+  var btn = document.getElementById('btnAddCompanion');
+  /* touchstart で即時反応させ、その後の click は無視 */
+  var touched = false;
+  btn.addEventListener('touchstart', function(e) {
+    e.preventDefault(); /* スクロール誤動作防止 */
+    touched = true;
+    addCompanion();
+  }, { passive: false });
+  btn.addEventListener('click', function() {
+    if (touched) { touched = false; return; } /* touchstart 済みなら skip */
+    addCompanion();
+  });
+})();
 
 /* ===== 初期化 ===== */
 renderCompanions();
