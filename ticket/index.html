@@ -529,6 +529,33 @@
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+/* ブラウザ識別ID：端末ごとに固有のIDを生成・保存（重複申込の判別用） */
+function getDeviceId() {
+  var KEY = 'ai_ballet_device_id';
+  var id;
+  try {
+    id = localStorage.getItem(KEY);
+    if (!id) {
+      id = 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(KEY, id);
+    }
+  } catch(e) {
+    /* localStorageが使えない場合は毎回ランダム（判別不可だが送信は継続） */
+    id = 'dev-nostore-' + Math.random().toString(36).slice(2, 10);
+  }
+  return id;
+}
+
+/* 端末種別を判定 */
+function getDeviceType() {
+  var ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'iPhone/iPad';
+  if (/Android/i.test(ua))          return 'Android';
+  if (/Windows/i.test(ua))          return 'Windows PC';
+  if (/Macintosh/i.test(ua))        return 'Mac';
+  return 'その他';
+}
 function fmtDt(d) {
   return d.getFullYear() + '/' +
     String(d.getMonth()+1).padStart(2,'0') + '/' +
@@ -783,6 +810,8 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
     contact:        purpose === 'trial'     ? document.getElementById('contact').value.trim()       : '',
     companions:     companions.filter(function(c){ return c.name.trim() !== ''; }).map(function(c){ return { name: c.name.trim(), ageGroup: c.ageGroup || '大人' }; }),
     trialMailOptIn: document.getElementById('trialMailOptIn').checked,
+    deviceId:       getDeviceId(),   /* ブラウザ識別ID */
+    deviceType:     getDeviceType(), /* 端末種別 */
   };
 
   /* GASに送信し、成功したらチケット表示 */
