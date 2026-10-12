@@ -375,21 +375,13 @@
 
       <div class="form-group">
         <label class="form-label">年齢区分<span class="required">*</span></label>
-        <div class="purpose-options">
-          <div class="purpose-option">
-            <input type="radio" name="repAgeGroup" id="ageAdult" value="大人">
-            <label class="purpose-label" for="ageAdult">
-              <span class="p-icon">🧑</span>
-              <span class="p-text">大人</span>
-            </label>
-          </div>
-          <div class="purpose-option">
-            <input type="radio" name="repAgeGroup" id="ageChild" value="子ども">
-            <label class="purpose-label" for="ageChild">
-              <span class="p-icon">🧒</span>
-              <span class="p-text">子ども</span>
-            </label>
-          </div>
+        <div style="display:flex;gap:16px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;cursor:pointer;">
+            <input type="radio" name="repAgeGroup" id="ageAdult" value="大人" style="accent-color:var(--pink-dark);width:18px;height:18px;">大人
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;cursor:pointer;">
+            <input type="radio" name="repAgeGroup" id="ageChild" value="子ども" style="accent-color:var(--pink-dark);width:18px;height:18px;">子ども
+          </label>
         </div>
         <div class="form-error" id="errRepAge">年齢区分を選択してください</div>
       </div>
