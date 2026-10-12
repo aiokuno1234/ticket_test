@@ -487,7 +487,6 @@
 
     <div class="ticket-actions">
       <button type="button" class="btn-action btn-action-pdf"  id="btnPdf">📄 PDFで保存</button>
-      <button type="button" class="btn-action btn-action-back" id="btnBack">＋ 別の方を申込む</button>
     </div>
   </div>
 
@@ -814,23 +813,6 @@ document.getElementById('btnPdf').addEventListener('click', function() {
     })
     .catch(function(e) { console.error(e); toast('PDF生成に失敗しました', 'error'); })
     .finally(function() { overlay.classList.remove('show'); });
-});
-
-/* ===== 別の方を申込む ===== */
-document.getElementById('btnBack').addEventListener('click', function() {
-  document.getElementById('repName').value      = '';
-  document.getElementById('repAge').value       = '';
-  document.getElementById('performerName').value = '';
-  document.getElementById('contact').value       = '';
-  document.getElementById('trialMailOptIn').checked = false;
-  document.querySelectorAll('input[name="purpose"]').forEach(function(r){ r.checked = false; });
-  document.getElementById('detailPerformer').classList.add('hidden');
-  document.getElementById('detailTrial').classList.add('hidden');
-  document.querySelectorAll('.form-error').forEach(function(e){ e.classList.remove('show'); });
-  companions = [];
-  companionIdSeq = 0;
-  renderCompanions();
-  showPage('form');
 });
 
 /* ===== お連れ様追加ボタン ===== */
