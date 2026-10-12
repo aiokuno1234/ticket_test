@@ -56,9 +56,9 @@
       position: relative;
       overflow: hidden;
     }
-    .site-header::before { content: '🌸'; position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 28px; opacity: 0.25; }
-    .site-header::after  { content: '🌸'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 28px; opacity: 0.25; }
-    .header-script { font-family: 'Dancing Script', cursive; font-size: 26px; color: var(--pink); letter-spacing: 0.04em; line-height: 1.2; }
+    .site-header::before { content: ''; }
+    .site-header::after  { content: ''; }
+    .header-logo { height: 48px; width: auto; display: block; margin: 0 auto 4px; }
     .header-title  { font-size: 17px; font-weight: 700; color: #fff; margin: 4px 0 2px; }
     .header-sub    { font-size: 12px; color: rgba(255,255,255,0.72); }
 
@@ -260,7 +260,7 @@
     .ticket-deco { position: absolute; border-radius: 50%; background: rgba(232,160,180,0.08); }
     .ticket-deco.d1 { width: 130px; height: 130px; top: -35px; right: -25px; }
     .ticket-deco.d2 { width: 70px; height: 70px; bottom: -15px; left: 20px; }
-    .ticket-studio { font-family: 'Dancing Script', cursive; font-size: 18px; color: var(--pink); margin-bottom: 4px; }
+    .ticket-studio-logo { height: 36px; width: auto; display: block; margin-bottom: 6px; }
     .ticket-ev-name { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 12px; }
     .ticket-programs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
     .ticket-chip {
@@ -324,8 +324,10 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-text { font-size: 14px; font-weight: 700; }
 
-    /* スマホ */
-    @media (max-width: 480px) {
+    /* チェックボックス */
+    .check-group { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .check-group input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--pink-dark); cursor: pointer; flex-shrink: 0; }
+    .check-group label { font-size: 13px; color: var(--text); cursor: pointer; }
       .ticket-greeting { font-size: 22px; }
       .ticket-ev-name  { font-size: 18px; }
     }
@@ -334,7 +336,7 @@
 <body>
 
 <header class="site-header">
-  <div class="header-script">Ai Ballet Studio</div>
+  <img src="moji.png" alt="Ai Ballet Studio" class="header-logo">
   <div class="header-title">第2回発表会 チケット申込</div>
   <div class="header-sub">アイバレエスタジオ — 2026年11月8日（日）</div>
 </header>
@@ -407,12 +409,16 @@
           <label class="form-label" for="contact">メールアドレス<span class="required">*</span></label>
           <input type="email" id="contact" class="form-input" placeholder="例：example@mail.com" autocomplete="email" inputmode="email">
           <div class="form-error" id="errContact">正しいメールアドレスを入力してください</div>
+          <div class="check-group">
+            <input type="checkbox" id="trialMailOptIn">
+            <label for="trialMailOptIn">体験案内メールを希望する</label>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="form-card">
-      <div class="section-title">👥 お連れ様<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:8px;">最大4名（名前のみ）</span></div>
+      <div class="section-title">👥 お連れ様<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:8px;">最大10名</span></div>
       <div id="companionsList" class="companions-list"></div>
       <button type="button" id="btnAddCompanion" class="btn-add-companion">
         ＋ お連れ様を追加する
@@ -433,7 +439,7 @@
     <div class="ticket-success-msg">
       <div class="ticket-success-icon">🎉</div>
       <div class="ticket-success-title">お申込みが完了しました！</div>
-      <div class="ticket-success-sub">下記のチケットをご持参ください</div>
+      <div class="ticket-success-sub">下記のチケットをスクリーンショットまたはPDF保存し、受付でご提示ください</div>
     </div>
 
     <div class="ticket-wrapper">
@@ -441,7 +447,7 @@
         <div class="ticket-top">
           <div class="ticket-deco d1"></div>
           <div class="ticket-deco d2"></div>
-          <div class="ticket-studio">Ai Ballet Studio</div>
+          <img src="moji.png" alt="Ai Ballet Studio" class="ticket-studio-logo">
           <div class="ticket-ev-name">第2回発表会</div>
           <div class="ticket-programs">
             <span class="ticket-chip">🩰 バレエコンサート</span>
@@ -543,7 +549,7 @@ var companionIdSeq = 0;
 var companions = []; /* [{ id, name }] */
 
 function addCompanion() {
-  if (companions.length >= 4) { toast('お連れ様は最大4名までです', 'error'); return; }
+  if (companions.length >= 10) { toast('お連れ様は最大10名までです', 'error'); return; }
   companions.push({ id: ++companionIdSeq, name: '' });
   renderCompanions();
 }
@@ -624,7 +630,7 @@ function renderCompanions() {
     existing.querySelector('.companion-num').textContent = 'お連れ' + (i + 1);
   });
 
-  document.getElementById('btnAddCompanion').style.display = companions.length >= 4 ? 'none' : 'flex';
+  document.getElementById('btnAddCompanion').style.display = companions.length >= 10 ? 'none' : 'flex';
   updateTotal();
 }
 
@@ -678,37 +684,60 @@ function validate() {
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILqQifQpLvTSJCNVdoxvyTV8qlWOr6lojwCXsb8dYhaaozw/exec';
 
 function sendToSheet(record) {
-  /* GASはno-cors+JSONを受け付けないため、非表示iframeを使ったform送信で回避 */
-  try {
-    var iframe = document.createElement('iframe');
-    iframe.name = 'gas_target_' + Date.now();
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+  /* お連れ様0名の場合は代表者1行、1名以上は代表者行＋お連れ様1人1行で送信 */
+  var rows = [];
 
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = GAS_URL;
-    form.target = iframe.name;
-    form.style.display = 'none';
+  /* 代表者行 */
+  rows.push(Object.assign({}, record, { rowType: 'rep' }));
 
-    /* JSONを1フィールドにまとめて送る（GAS側で e.parameter.payload で受け取る） */
-    var input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'payload';
-    input.value = JSON.stringify(record);
-    form.appendChild(input);
+  /* お連れ様行（1人1行） */
+  record.companions.forEach(function(name, i) {
+    rows.push({
+      no:            record.no,
+      ts:            record.ts,
+      repName:       record.repName,
+      repAge:        record.repAge,
+      purpose:       record.purpose,
+      performerName: record.performerName,
+      contact:       record.contact,
+      trialMailOptIn: record.trialMailOptIn,
+      companions:    [],
+      companionName: name,        /* お連れ様の名前 */
+      companionIndex: i + 1,      /* 何人目か */
+      rowType:       'companion',
+    });
+  });
 
-    document.body.appendChild(form);
-    form.submit();
+  rows.forEach(function(row) {
+    try {
+      var iframe = document.createElement('iframe');
+      iframe.name = 'gas_target_' + Date.now() + '_' + Math.random();
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
 
-    /* 送信後にDOMをクリーンアップ */
-    setTimeout(function() {
-      if (form.parentNode)   form.parentNode.removeChild(form);
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-    }, 5000);
-  } catch(err) {
-    console.warn('Google Sheets送信エラー:', err);
-  }
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GAS_URL;
+      form.target = iframe.name;
+      form.style.display = 'none';
+
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'payload';
+      input.value = JSON.stringify(row);
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      form.submit();
+
+      setTimeout(function() {
+        if (form.parentNode)   form.parentNode.removeChild(form);
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      }, 5000);
+    } catch(err) {
+      console.warn('Google Sheets送信エラー:', err);
+    }
+  });
 }
 
 /* ===== フォーム送信 ===== */
@@ -727,6 +756,7 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
     performerName: purpose === 'performer' ? document.getElementById('performerName').value.trim() : '',
     contact:       purpose === 'trial'     ? document.getElementById('contact').value.trim()       : '',
     companions:    companions.filter(function(c){ return c.name.trim() !== ''; }).map(function(c){ return c.name.trim(); }),
+    trialMailOptIn: document.getElementById('trialMailOptIn').checked,
   };
   data.push(record);
   saveData(data);
@@ -796,6 +826,7 @@ document.getElementById('btnBack').addEventListener('click', function() {
   document.getElementById('repAge').value       = '';
   document.getElementById('performerName').value = '';
   document.getElementById('contact').value       = '';
+  document.getElementById('trialMailOptIn').checked = false;
   document.querySelectorAll('input[name="purpose"]').forEach(function(r){ r.checked = false; });
   document.getElementById('detailPerformer').classList.add('hidden');
   document.getElementById('detailTrial').classList.add('hidden');
