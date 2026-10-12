@@ -704,37 +704,28 @@ function sendRow(data) {
 }
 
 function sendToSheet(record, callback) {
-  /* GETでNo.（現在の行数）を取得してから送信 */
-  fetch(GAS_URL + '?action=getNo')
-    .then(function(res) { return res.json(); })
-    .then(function(json) {
-      record.no = json.no || 0;
-    })
-    .catch(function() { record.no = 0; })
-    .finally(function() {
-      /* 代表者行を送信 */
-      sendRow(Object.assign({}, record, { rowType: 'rep' }));
+  /* 代表者行を送信 */
+  sendRow(Object.assign({}, record, { rowType: 'rep' }));
 
-      /* お連れ様行を送信 */
-      record.companions.forEach(function(name, i) {
-        sendRow({
-          no:             record.no,
-          ts:             record.ts,
-          repName:        record.repName,
-          repAge:         record.repAge,
-          purpose:        record.purpose,
-          performerName:  record.performerName,
-          contact:        record.contact,
-          trialMailOptIn: record.trialMailOptIn,
-          companions:     [],
-          companionName:  name,
-          companionIndex: i + 1,
-          rowType:        'companion',
-        });
-      });
-
-      callback(record);
+  /* お連れ様行を送信 */
+  record.companions.forEach(function(name, i) {
+    sendRow({
+      no:             record.no,
+      ts:             record.ts,
+      repName:        record.repName,
+      repAge:         record.repAge,
+      purpose:        record.purpose,
+      performerName:  record.performerName,
+      contact:        record.contact,
+      trialMailOptIn: record.trialMailOptIn,
+      companions:     [],
+      companionName:  name,
+      companionIndex: i + 1,
+      rowType:        'companion',
     });
+  });
+
+  callback(record);
 }
 
 /* ===== フォーム送信 ===== */
@@ -748,8 +739,12 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
 
   var now     = new Date();
   var purpose = document.querySelector('input[name="purpose"]:checked').value;
+
+  /* チケットNo.：申込日時とランダム値から6桁を生成 */
+  var ticketNo = (now.getTime() % 900000) + 100000; /* 100000〜999999 */
+
   var record  = {
-    no:             0, /* GASから採番 */
+    no:             ticketNo,
     ts:             now.toISOString(),
     repName:        document.getElementById('repName').value.trim(),
     repAge:         parseInt(toHalfNum(document.getElementById('repAge').value), 10),
