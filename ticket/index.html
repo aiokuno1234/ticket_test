@@ -678,26 +678,48 @@ function validate() {
 /* ===== Google Sheets 送信 ===== */
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILqQifQpLvTSJCNVdoxvyTV8qlWOr6lojwCXsb8dYhaaozw/exec';
 
+/* iframeフォーム送信（返り値不要な行用） */
+function sendRow(data) {
+  var iframeName = 'gas_row_' + Date.now() + '_' + Math.random();
+  var fi = document.createElement('iframe');
+  fi.name = iframeName;
+  fi.style.display = 'none';
+  document.body.appendChild(fi);
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = GAS_URL;
+  form.target = iframeName;
+  form.style.display = 'none';
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'payload';
+  input.value = JSON.stringify(data);
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(function() {
+    if (form.parentNode) form.parentNode.removeChild(form);
+    if (fi.parentNode)   fi.parentNode.removeChild(fi);
+  }, 5000);
+}
+
+/* 代表者行はfetchで送信してNo.を受け取る */
 function sendToSheet(record, callback) {
-  /* GASにPOSTしてNo.を返してもらう（代表者行のみ返り値を待つ） */
-  var iframe = document.createElement('iframe');
-  iframe.name = 'gas_rep_' + Date.now();
-  iframe.style.display = 'none';
-  document.body.appendChild(iframe);
+  var params = new URLSearchParams();
+  params.append('payload', JSON.stringify(Object.assign({}, record, { rowType: 'rep' })));
 
-  /* iframeのonloadでGASの返り値（No.）を受け取る */
-  iframe.addEventListener('load', function() {
+  fetch(GAS_URL, {
+    method: 'POST',
+    body: params,
+  })
+  .then(function(res) { return res.text(); })
+  .then(function(txt) {
     try {
-      var txt = iframe.contentDocument
-                  ? iframe.contentDocument.body.innerText
-                  : iframe.contentWindow.document.body.innerText;
       var res = JSON.parse(txt);
-      if (res && res.no) {
-        record.no = res.no; /* GASから採番されたNo.をセット */
-      }
-    } catch(e) { /* 取得できなくても続行 */ }
+      if (res && res.no) record.no = res.no;
+    } catch(e) {}
 
-    /* お連れ様行を追加送信（No.確定後） */
+    /* No.確定後にお連れ様行を送信 */
     record.companions.forEach(function(name, i) {
       sendRow({
         no:             record.no,
@@ -715,39 +737,12 @@ function sendToSheet(record, callback) {
       });
     });
 
-    callback(record); /* チケット表示へ */
-
-    setTimeout(function() {
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-    }, 5000);
+    callback(record);
+  })
+  .catch(function(err) {
+    console.warn('送信エラー:', err);
+    callback(record); /* エラーでもチケット表示は続行 */
   });
-
-  sendRow(Object.assign({}, record, { rowType: 'rep' }), iframe.name);
-}
-
-function sendRow(data, targetName) {
-  /* iframeへのform送信 */
-  var iframeName = targetName || ('gas_row_' + Date.now() + '_' + Math.random());
-  if (!targetName) {
-    var fi = document.createElement('iframe');
-    fi.name = iframeName;
-    fi.style.display = 'none';
-    document.body.appendChild(fi);
-    setTimeout(function() { if (fi.parentNode) fi.parentNode.removeChild(fi); }, 5000);
-  }
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = GAS_URL;
-  form.target = iframeName;
-  form.style.display = 'none';
-  var input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'payload';
-  input.value = JSON.stringify(data);
-  form.appendChild(input);
-  document.body.appendChild(form);
-  form.submit();
-  setTimeout(function() { if (form.parentNode) form.parentNode.removeChild(form); }, 5000);
 }
 
 /* ===== フォーム送信 ===== */
