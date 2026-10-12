@@ -374,9 +374,24 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="repAge">年齢<span class="required">*</span></label>
-        <input type="number" id="repAge" class="form-input" placeholder="例：35" min="0" max="120" style="max-width:110px;" inputmode="numeric">
-        <div class="form-error" id="errRepAge">年齢を入力してください</div>
+        <label class="form-label">年齢区分<span class="required">*</span></label>
+        <div class="purpose-options">
+          <div class="purpose-option">
+            <input type="radio" name="repAgeGroup" id="ageAdult" value="大人">
+            <label class="purpose-label" for="ageAdult">
+              <span class="p-icon">🧑</span>
+              <span class="p-text">大人</span>
+            </label>
+          </div>
+          <div class="purpose-option">
+            <input type="radio" name="repAgeGroup" id="ageChild" value="子ども">
+            <label class="purpose-label" for="ageChild">
+              <span class="p-icon">🧒</span>
+              <span class="p-text">子ども</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-error" id="errRepAge">年齢区分を選択してください</div>
       </div>
 
       <div class="form-group">
@@ -544,11 +559,11 @@ function onPurposeChange() {
 /* ===== お連れ様管理 ===== */
 /* IDベースで管理してインデックスのズレを防ぐ */
 var companionIdSeq = 0;
-var companions = []; /* [{ id, name }] */
+var companions = []; /* [{ id, name, ageGroup }] */
 
 function addCompanion() {
   if (companions.length >= 10) { toast('お連れ様は最大10名までです', 'error'); return; }
-  companions.push({ id: ++companionIdSeq, name: '' });
+  companions.push({ id: ++companionIdSeq, name: '', ageGroup: '' });
   renderCompanions();
 }
 
@@ -591,12 +606,35 @@ function renderCompanions() {
       inp.placeholder = 'お名前';
       inp.value = c.name;
       inp.dataset.cid = c.id;
-      /* クロージャを使わずdatasetで参照 */
       inp.addEventListener('input', function() {
         var cid = Number(this.dataset.cid);
         var comp = companions.find(function(x){ return x.id === cid; });
         if (comp) comp.name = this.value;
         updateTotal();
+      });
+
+      /* 大人/子ども選択 */
+      var ageWrap = document.createElement('div');
+      ageWrap.style.cssText = 'display:flex;gap:6px;flex-shrink:0;';
+
+      ['大人','子ども'].forEach(function(label) {
+        var ageLbl = document.createElement('label');
+        ageLbl.style.cssText = 'display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;';
+        var ageRad = document.createElement('input');
+        ageRad.type = 'radio';
+        ageRad.name = 'compAge_' + c.id;
+        ageRad.value = label;
+        ageRad.style.cssText = 'accent-color:var(--pink-dark);width:16px;height:16px;';
+        if (c.ageGroup === label) ageRad.checked = true;
+        ageRad.dataset.cid = c.id;
+        ageRad.addEventListener('change', function() {
+          var cid = Number(this.dataset.cid);
+          var comp = companions.find(function(x){ return x.id === cid; });
+          if (comp) comp.ageGroup = this.value;
+        });
+        ageLbl.appendChild(ageRad);
+        ageLbl.appendChild(document.createTextNode(label));
+        ageWrap.appendChild(ageLbl);
       });
 
       var btn = document.createElement('button');
@@ -620,6 +658,7 @@ function renderCompanions() {
 
       row.appendChild(lbl);
       row.appendChild(inp);
+      row.appendChild(ageWrap);
       row.appendChild(btn);
       list.appendChild(row);
       existing = row;
@@ -655,12 +694,10 @@ function validate() {
   setErr('errRepName', !name);
   if (!name) ok = false;
 
-  /* 全角数字対応 */
-  var ageRaw = toHalfNum(document.getElementById('repAge').value);
-  var ageNum = parseInt(ageRaw, 10);
-  var ageOk = ageRaw !== '' && !isNaN(ageNum) && ageNum >= 0 && ageNum <= 120;
-  setErr('errRepAge', !ageOk);
-  if (!ageOk) ok = false;
+  /* 年齢区分 */
+  var ageGroup = document.querySelector('input[name="repAgeGroup"]:checked');
+  setErr('errRepAge', !ageGroup);
+  if (!ageGroup) ok = false;
 
   var purpose = document.querySelector('input[name="purpose"]:checked');
   setErr('errPurpose', !purpose);
@@ -711,7 +748,7 @@ function sendToSheet(record, callback) {
   sendRow(Object.assign({}, record, { rowType: 'rep' }));
 
   /* お連れ様行を送信 */
-  record.companions.forEach(function(name, i) {
+  record.companions.forEach(function(comp, i) {
     sendRow({
       no:             record.no,
       ts:             record.ts,
@@ -722,7 +759,8 @@ function sendToSheet(record, callback) {
       contact:        record.contact,
       trialMailOptIn: record.trialMailOptIn,
       companions:     [],
-      companionName:  name,
+      companionName:  comp.name,
+      companionAge:   comp.ageGroup,
       companionIndex: i + 1,
       rowType:        'companion',
     });
@@ -750,11 +788,11 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
     no:             ticketNo,
     ts:             now.toISOString(),
     repName:        document.getElementById('repName').value.trim(),
-    repAge:         parseInt(toHalfNum(document.getElementById('repAge').value), 10),
+    repAge:         document.querySelector('input[name="repAgeGroup"]:checked').value,
     purpose:        purpose,
     performerName:  purpose === 'performer' ? document.getElementById('performerName').value.trim() : '',
     contact:        purpose === 'trial'     ? document.getElementById('contact').value.trim()       : '',
-    companions:     companions.filter(function(c){ return c.name.trim() !== ''; }).map(function(c){ return c.name.trim(); }),
+    companions:     companions.filter(function(c){ return c.name.trim() !== ''; }).map(function(c){ return { name: c.name.trim(), ageGroup: c.ageGroup || '大人' }; }),
     trialMailOptIn: document.getElementById('trialMailOptIn').checked,
   };
 
@@ -785,7 +823,7 @@ function renderTicket(r) {
   if (r.companions.length > 0) {
     box.style.display = 'block';
     chips.innerHTML = r.companions.map(function(c){
-      return '<span class="ticket-chip-name">' + esc(c) + '</span>';
+      return '<span class="ticket-chip-name">' + esc(c.name) + '（' + esc(c.ageGroup) + '）</span>';
     }).join('');
   } else {
     box.style.display = 'none';
