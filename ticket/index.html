@@ -745,9 +745,25 @@ function sendRow(data) {
 }
 
 function sendToSheet(record, callback) {
-  /* 全データを1つのリクエストにまとめてGASに送信 */
-  sendRow(Object.assign({}, record, { rowType: 'all' }));
-  callback(record);
+  /* オフライン確認 */
+  if (!navigator.onLine) {
+    callback(null); /* nullでオフラインエラーを通知 */
+    return;
+  }
+
+  /* GASにPINGを送って実際の疎通を確認してから送信 */
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', GAS_URL + '?ping=1', true);
+  xhr.timeout = 8000; /* 8秒でタイムアウト */
+  xhr.onload = function() {
+    /* 疎通OK → データ送信 */
+    sendRow(Object.assign({}, record, { rowType: 'all' }));
+    callback(record);
+  };
+  xhr.onerror = xhr.ontimeout = function() {
+    callback(null); /* 疎通失敗 */
+  };
+  xhr.send();
 }
 
 /* ===== フォーム送信 ===== */
@@ -777,10 +793,17 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
     trialMailOptIn: document.getElementById('trialMailOptIn').checked,
   };
 
-  /* GASに送信し、No.が返ってきたらチケット表示 */
+  /* GASに送信し、成功したらチケット表示 */
   sendToSheet(record, function(filledRecord) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<span>🎟</span>チケットを発行する';
+
+    if (filledRecord === null) {
+      /* オフライン・疎通失敗 */
+      toast('通信エラーが発生しました。電波の良い場所で再度お試しください。', 'error');
+      return;
+    }
+
     renderTicket(filledRecord);
     showPage('ticket');
     toast('🎉 申込が完了しました！', 'success');
