@@ -512,6 +512,9 @@
     <div class="ticket-actions">
       <button type="button" class="btn-action btn-action-pdf" id="btnPdf">📄 PDFで表示</button>
     </div>
+    <div id="inAppWarning" style="display:none;font-size:12px;color:var(--red);text-align:center;line-height:1.6;margin-bottom:16px;padding:0 10px;">
+      ⚠️ LINEなどのアプリ内では「PDFで表示」が利用できません。<br>右上メニューから「Safari / ブラウザで開く」を選ぶか、スクリーンショットで保存してください。
+    </div>
   </div>
 
 </main>
@@ -555,6 +558,16 @@ function getDeviceType() {
   if (/Windows/i.test(ua))          return 'Windows PC';
   if (/Macintosh/i.test(ua))        return 'Mac';
   return 'その他';
+}
+
+/* アプリ内ブラウザ（WebView）かどうかを判定 */
+function isInAppBrowser() {
+  var ua = navigator.userAgent || '';
+  /* LINE, Instagram, Facebook, Twitter などの代表的なアプリ内ブラウザ */
+  return /Line\//i.test(ua) ||
+         /FBAN|FBAV/i.test(ua) ||
+         /Instagram/i.test(ua) ||
+         /Twitter/i.test(ua);
 }
 function fmtDt(d) {
   return d.getFullYear() + '/' +
@@ -839,6 +852,10 @@ document.getElementById('btnSubmit').addEventListener('click', function() {
 
     renderTicket(filledRecord);
     showPage('ticket');
+    /* アプリ内ブラウザならPDF利用不可の案内を表示 */
+    if (isInAppBrowser()) {
+      document.getElementById('inAppWarning').style.display = 'block';
+    }
     toast('🎉 申込が完了しました！', 'success');
   });
 });
@@ -872,6 +889,11 @@ function renderTicket(r) {
 
 /* ===== PDF表示 ===== */
 document.getElementById('btnPdf').addEventListener('click', function() {
+  /* アプリ内ブラウザ（LINE等）はPDF表示に非対応のため案内 */
+  if (isInAppBrowser()) {
+    toast('PDF表示はこのアプリ内ブラウザでは利用できません。画面右上などのメニューから「Safari」「ブラウザで開く」を選んでからお試しください。スクリーンショットでも保存できます。', 'error');
+    return;
+  }
   if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
     toast('PDF機能を利用するにはオンライン環境が必要です', 'error');
     return;
