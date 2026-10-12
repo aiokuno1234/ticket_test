@@ -78,16 +78,6 @@
       position: relative;
       overflow: hidden;
     }
-    /* バレリーナのシルエット（白半透明の影として配置） */
-    .silhouette {
-      position: absolute;
-      pointer-events: none;
-      height: auto;
-      opacity: 0.35;
-      z-index: 0;
-      mix-blend-mode: screen;
-      filter: invert(1);
-    }
     .event-card > *, .ticket-top > * { position: relative; z-index: 1; }
     /* タイトル横に並べるシルエット */
     .silhouette-inline {
@@ -327,31 +317,12 @@
     .ticket-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
     .ticket-icon { font-size: 26px; }
 
-    /* アクションボタン */
-    .ticket-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 24px; }
-    .btn-action {
-      display: flex; align-items: center; gap: 6px;
-      padding: 14px 22px; border-radius: var(--radius-md);
-      font-size: 14px; font-weight: 700;
-      font-family: 'Noto Serif JP', serif;
-      cursor: pointer; border: none; min-height: 52px;
-    }
-    .btn-action-pdf  { background: linear-gradient(135deg, #e06030 0%, #c04020 100%); color: #fff; box-shadow: 0 4px 14px rgba(224,96,48,0.28); }
-    .btn-action-back { background: var(--surface); color: var(--navy); border: 2px solid var(--border); }
-
     /* トースト */
     .toast-container { position: fixed; bottom: 20px; right: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
     .toast { background: var(--navy); color: #fff; padding: 12px 18px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); font-size: 14px; font-weight: 600; animation: toastIn 0.22s ease; }
     .toast.success { background: #1e5c3a; }
     .toast.error   { background: #8a1e28; }
     @keyframes toastIn { from { opacity:0; transform:translateX(36px); } to { opacity:1; transform:translateX(0); } }
-
-    /* ローディング */
-    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(26,26,46,0.5); z-index: 500; align-items: center; justify-content: center; flex-direction: column; gap: 14px; color: #fff; }
-    .loading-overlay.show { display: flex; }
-    .spinner { width: 46px; height: 46px; border: 5px solid rgba(255,255,255,0.2); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-text { font-size: 14px; font-weight: 700; }
 
     /* チェックボックス */
     .check-group { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
@@ -581,15 +552,6 @@ function getDeviceType() {
   return 'その他';
 }
 
-/* アプリ内ブラウザ（WebView）かどうかを判定 */
-function isInAppBrowser() {
-  var ua = navigator.userAgent || '';
-  /* LINE, Instagram, Facebook, Twitter などの代表的なアプリ内ブラウザ */
-  return /Line\//i.test(ua) ||
-         /FBAN|FBAV/i.test(ua) ||
-         /Instagram/i.test(ua) ||
-         /Twitter/i.test(ua);
-}
 function fmtDt(d) {
   return d.getFullYear() + '/' +
     String(d.getMonth()+1).padStart(2,'0') + '/' +
@@ -759,13 +721,6 @@ function setErr(id, show) {
   if (el) el.classList.toggle('show', !!show);
 }
 
-/* 全角数字→半角に正規化 */
-function toHalfNum(str) {
-  return String(str).replace(/[０-９]/g, function(c) {
-    return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
-  }).trim();
-}
-
 function validate() {
   var ok = true;
   var name = document.getElementById('repName').value.trim();
@@ -796,7 +751,7 @@ function validate() {
 /* ===== Google Sheets 送信 ===== */
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILqQifQpLvTSJCNVdoxvyTV8qlWOr6lojwCXsb8dYhaaozw/exec';
 
-/* iframeフォーム送信（fire-and-forget） */
+/* GASへデータ送信し、応答を確認してからコールバック */
 function sendToSheet(record, callback) {
   /* オフライン確認 */
   if (!navigator.onLine) {
