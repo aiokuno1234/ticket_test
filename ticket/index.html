@@ -712,27 +712,36 @@ var GAS_URL = 'https://script.google.com/macros/s/AKfycbzyszO7oVuBOMijUmtBNDlILq
 
 /* iframeフォーム送信（fire-and-forget） */
 function sendRow(data) {
-  var iframeName = 'gas_row_' + Date.now() + '_' + Math.random();
-  var fi = document.createElement('iframe');
-  fi.name = iframeName;
-  fi.style.display = 'none';
-  document.body.appendChild(fi);
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = GAS_URL;
-  form.target = iframeName;
-  form.style.display = 'none';
-  var input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'payload';
-  input.value = JSON.stringify(data);
-  form.appendChild(input);
-  document.body.appendChild(form);
-  form.submit();
-  setTimeout(function() {
-    if (form.parentNode) form.parentNode.removeChild(form);
-    if (fi.parentNode)   fi.parentNode.removeChild(fi);
-  }, 5000);
+  /* XHR + no-cors + text/plain でGASに送信（最も安定） */
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', GAS_URL, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain');
+    xhr.send(JSON.stringify(data));
+  } catch(err) {
+    /* XHR失敗時はiframeフォーム送信にフォールバック */
+    var iframeName = 'gas_row_' + Date.now() + '_' + Math.random();
+    var fi = document.createElement('iframe');
+    fi.name = iframeName;
+    fi.style.display = 'none';
+    document.body.appendChild(fi);
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = GAS_URL;
+    form.target = iframeName;
+    form.style.display = 'none';
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = JSON.stringify(data);
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(function() {
+      if (form.parentNode) form.parentNode.removeChild(form);
+      if (fi.parentNode)   fi.parentNode.removeChild(fi);
+    }, 5000);
+  }
 }
 
 function sendToSheet(record, callback) {
